@@ -8,48 +8,89 @@ export default function SignupPage() {
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [loading, setLoading] = useState(false)
+  const [loadingGoogle, setLoadingGoogle] = useState(false)
+  const [loadingEmail, setLoadingEmail] = useState(false)
+  const [message, setMessage] = useState("")
 
   const handleGoogle = async () => {
-    const { data } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: "https://careerhelper-two.vercel.app/auth/callback",
-      },
-    })
+    try {
+      setLoadingGoogle(true)
+      setMessage("")
 
-    if (data?.url) window.location.href = data.url
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: "https://careerhelper-two.vercel.app/auth/callback",
+        },
+      })
+
+      if (error) {
+        setMessage(error.message)
+        return
+      }
+
+      if (data?.url) {
+        window.location.href = data.url
+      } else {
+        setMessage("Google sign-in did not return a redirect URL.")
+      }
+    } catch (err) {
+      setMessage("Something went wrong starting Google sign-in.")
+      console.error(err)
+    } finally {
+      setLoadingGoogle(false)
+    }
   }
 
   const handleEmail = async () => {
-    setLoading(true)
+    try {
+      setLoadingEmail(true)
+      setMessage("")
 
-    await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: "http://localhost:3000/auth/callback",
-      },
-    })
+      if (!email || !password) {
+        setMessage("Please enter both email and password.")
+        return
+      }
 
-    setLoading(false)
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: "https://careerhelper-two.vercel.app/auth/callback",
+        },
+      })
+
+      if (error) {
+        setMessage(error.message)
+        return
+      }
+
+      setMessage("Check your email to continue.")
+    } catch (err) {
+      setMessage("Something went wrong during sign up.")
+      console.error(err)
+    } finally {
+      setLoadingEmail(false)
+    }
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-black text-white">
-      <div className="w-full max-w-md p-8 bg-white/5 border border-white/10 rounded-2xl">
-        <h1 className="text-2xl font-bold mb-6">Create account</h1>
+    <main className="min-h-screen flex items-center justify-center bg-black text-white px-6">
+      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-8">
+        <h1 className="mb-6 text-2xl font-bold">Create account</h1>
 
         <button
+          type="button"
           onClick={handleGoogle}
-          className="w-full bg-white text-black py-2 rounded-lg mb-4"
+          disabled={loadingGoogle}
+          className="mb-4 w-full rounded-lg bg-white py-2 text-black disabled:opacity-60"
         >
-          Continue with Google
+          {loadingGoogle ? "Redirecting..." : "Continue with Google"}
         </button>
 
         <input
           placeholder="Email"
-          className="w-full mb-3 px-4 py-2 bg-black/50 border border-white/10 rounded"
+          className="mb-3 w-full rounded border border-white/10 bg-black/50 px-4 py-2"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
@@ -57,17 +98,23 @@ export default function SignupPage() {
         <input
           type="password"
           placeholder="Password"
-          className="w-full mb-4 px-4 py-2 bg-black/50 border border-white/10 rounded"
+          className="mb-4 w-full rounded border border-white/10 bg-black/50 px-4 py-2"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
 
         <button
+          type="button"
           onClick={handleEmail}
-          className="w-full bg-white text-black py-2 rounded-lg"
+          disabled={loadingEmail}
+          className="w-full rounded-lg bg-white py-2 text-black disabled:opacity-60"
         >
-          {loading ? "Loading..." : "Sign up"}
+          {loadingEmail ? "Signing up..." : "Sign up"}
         </button>
+
+        {message ? (
+          <p className="mt-4 text-sm text-white/70">{message}</p>
+        ) : null}
       </div>
     </main>
   )
